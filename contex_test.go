@@ -83,6 +83,46 @@ func TestContextWithCancel(t *testing.T){
 	fmt.Println("Total goroutine : ", runtime.NumGoroutine())
 }
 
+func CreateCounter2(ctx context.Context) chan int {
+	destination := make(chan int)
+
+	go func() {
+		defer close(destination)
+		counter := 1
+		for{
+			select {
+			case <- ctx.Done():
+				return
+			default: 
+				destination <- counter
+				counter++
+				time.Sleep(1 * time.Second) // Simulasi slow
+			}
+		}
+	}()
+
+	return destination
+}
+
+func TestContextWithTimeout(t *testing.T){
+	fmt.Println("Total goroutine : ", runtime.NumGoroutine())
+
+	parent := context.Background()
+	ctx, cancel := context.WithTimeout(parent, 5 * time.Second)
+	defer cancel()
+
+	destination := CreateCounter2(ctx)
+
+	fmt.Println("Total goroutine : ", runtime.NumGoroutine())
+
+	for n := range destination {
+		fmt.Println("Counter", n)
+	}
+
+	time.Sleep(5 * time.Second)
+	fmt.Println("Total goroutine : ", runtime.NumGoroutine())
+}
+
 /**
  * PENGENALAN CONTEXT
  * Context merupakan sebuah data yang membawa value, sinyal cancel, sinyal timeout
@@ -147,4 +187,16 @@ func TestContextWithCancel(t *testing.T){
  * terhadap contextnya, jika tidak maka tidak ada gunanya
  * Untuk membuat context dengan cancel signal, kita bisa menggunakan function
  * context.WithCancel(parent)
+ * 
+ * CONTEXT WITH TIMEOUT
+ * Dengan timeout kita bisa mengirim sinyal cancel ke context secara otomatis 
+ * Dengan menggunakan pengaturan timeout, kita tidak perlu melakukan eksekusi cancel 
+ * secara manual, cancel akan otomatis di eksekusi jika waktu timeout sudah terlewati
+ * Penggunakan context with timeout sangat cocok ketika misalnya melakukan query ke
+ * database atau http api, namun ingin menentukan batas maksimal timeoutnya
+ * Untuk membuat context dengan cancel signal secara otomatis menggunakan timeout
+ * kita bisa menggunakan function context.WithTimeout(duration)
+ * Meskipun timeout otomatis melakukan cancel tetap disarankan untuk menjalankkan 
+ * function cancel() untuk berjaga-jaga agar tidak terjadi goroutine leak pada proses 
+ * selesai sebelum waktu timeout
  */
