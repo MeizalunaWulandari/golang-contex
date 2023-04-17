@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"context"
 	"testing"
+	"runtime"
+	"time"
 )
 
 func TestContext(t *testing.T){
@@ -37,6 +39,48 @@ func TestContextWithValue(t *testing.T){
 	fmt.Println(contextF.Value("c"))	// Dapat Milik parent
 	fmt.Println(contextF.Value("b"))	// Tidak dapat, beda parent
 	fmt.Println(contextA.Value("b"))	// Tidak bisa mengambil data child
+}
+
+func CreateCounter(ctx context.Context) chan int {
+	destination := make(chan int)
+
+	go func() {
+		defer close(destination)
+		counter := 1
+		for{
+			select {
+			case <- ctx.Done():
+				return
+			default: 
+				destination <- counter
+				counter++
+			}
+		}
+	}()
+
+	return destination
+}
+
+func TestContextWithCancel(t *testing.T){
+	fmt.Println("Total goroutine : ", runtime.NumGoroutine())
+
+	parent := context.Background()
+	ctx, cancel := context.WithCancel(parent)
+
+	destination := CreateCounter(ctx)
+
+	fmt.Println("Total goroutine : ", runtime.NumGoroutine())
+
+	for n := range destination {
+		fmt.Println("Counter", n)
+		if n == 10 {
+			break
+		}
+	}
+
+	cancel()
+	time.Sleep(5 * time.Second)
+	fmt.Println("Total goroutine : ", runtime.NumGoroutine())
 }
 
 /**
@@ -93,4 +137,14 @@ func TestContextWithValue(t *testing.T){
  * *Context Get Value
  * Saat mengambil value sebuah context, maka child dapat mengambil value dari parentnya
  * namum parent tidak bisa mengambil value dari child
+ * 
+ * CONTEXT WITH CANCEL
+ * Sinyal cancel biasanya digunakan ketika kita butuh menjalankan proses lain, dan kita 
+ * ingin memberi sinyal cancel ke proses tersebut 
+ * Biasanya ini berupa goroutine yang berbeda, sehingga dengan mudah kita jika kita ingin
+ * membatalkan eksekusi goroutine, kita bisa membuat mengirim sinyal cancel ke contextnya
+ * Namun ingat, goroutine yang menggunakan context, tetap harus melakukan pengecekkan 
+ * terhadap contextnya, jika tidak maka tidak ada gunanya
+ * Untuk membuat context dengan cancel signal, kita bisa menggunakan function
+ * context.WithCancel(parent)
  */
