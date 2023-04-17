@@ -123,6 +123,25 @@ func TestContextWithTimeout(t *testing.T){
 	fmt.Println("Total goroutine : ", runtime.NumGoroutine())
 }
 
+func TestContextWithDeadline(t *testing.T){
+	fmt.Println("Total goroutine : ", runtime.NumGoroutine())
+
+	parent := context.Background()
+	ctx, cancel := context.WithDeadline(parent, time.Now().Add(5 * time.Second))
+	defer cancel()
+
+	destination := CreateCounter2(ctx)
+
+	fmt.Println("Total goroutine : ", runtime.NumGoroutine())
+
+	for n := range destination {
+		fmt.Println("Counter", n)
+	}
+
+	time.Sleep(5 * time.Second)
+	fmt.Println("Total goroutine : ", runtime.NumGoroutine())
+}
+
 /**
  * PENGENALAN CONTEXT
  * Context merupakan sebuah data yang membawa value, sinyal cancel, sinyal timeout
@@ -199,4 +218,12 @@ func TestContextWithTimeout(t *testing.T){
  * Meskipun timeout otomatis melakukan cancel tetap disarankan untuk menjalankkan 
  * function cancel() untuk berjaga-jaga agar tidak terjadi goroutine leak pada proses 
  * selesai sebelum waktu timeout
+ * 
+ * CONTEXT WITH DEADLINE
+ * Selain dengan timeout untuk melalakukan cancel secara otomatis, kita bisa juga 
+ * menggunakan deadline
+ * Pengaturan deadline sedikit berbeda dengan timeout, jika timeout kita beri waktu
+ * dari sekarang kalau deadline ditentukan kapan timeout nya, misalnya jam 12 siang hari
+ * Untuk membuat context dengan sinyal cancel secara otomatis menggunakan deadline, kita
+ * bisa menggunakan function context.WithDeadline(parentContext, time)
  */
